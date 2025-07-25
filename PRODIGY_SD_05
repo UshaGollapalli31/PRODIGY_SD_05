@@ -1,0 +1,43 @@
+import requests
+from bs4 import BeautifulSoup
+import csv
+
+BASE_URL = "http://books.toscrape.com/catalogue/page-{}.html"
+books = []
+
+def get_rating_class(rating_text):
+    rating_dict = {
+        'One': 1,
+        'Two': 2,
+        'Three': 3,
+        'Four': 4,
+        'Five': 5
+    }
+    return rating_dict.get(rating_text, 0)
+
+for page in range(1, 6):  # Scrape first 5 pages
+    print(f"Scraping page {page}...")
+    url = BASE_URL.format(page)
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, 'html.parser')
+
+    articles = soup.find_all('article', class_='product_pod')
+    for article in articles:
+        title = article.h3.a['title']
+        price = article.find('p', class_='price_color').text[2:]  # Remove £ symbol
+        rating_class = article.p.get('class')[1]  # e.g., 'Three'
+        rating = get_rating_class(rating_class)
+
+        books.append({
+            'Title': title,
+            'Price (£)': price,
+            'Rating (1–5)': rating
+        })
+
+# Save to CSV
+with open('books.csv', 'w', newline='', encoding='utf-8') as f:
+    writer = csv.DictWriter(f, fieldnames=['Title', 'Price (£)', 'Rating (1–5)'])
+    writer.writeheader()
+    writer.writerows(books)
+
+print(f"\n✅ Scraped {len(books)} books and saved to 'books.csv'.")
